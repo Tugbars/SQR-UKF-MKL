@@ -1,0 +1,63 @@
+; student_t_srukf.def
+; Module definition file for Windows DLL exports
+;
+; This file explicitly lists all exported functions from the DLL.
+; Required for Python ctypes binding on Windows.
+
+LIBRARY student_t_srukf
+
+EXPORTS
+    ; Creation/destruction
+    srukf_create
+    srukf_destroy
+    
+    ; Configuration
+    srukf_set_state
+    srukf_set_sqrt_cov
+    srukf_set_dynamics
+    srukf_set_measurement
+    srukf_set_process_noise
+    srukf_set_measurement_noise
+    srukf_set_ukf_params
+    srukf_set_vol_index
+    srukf_set_student_nu
+    
+    ; Filtering
+    srukf_predict
+    srukf_update
+    srukf_step
+    srukf_predict_only
+    srukf_update_partial
+    srukf_reset
+    
+    ; State access
+    srukf_get_state
+    srukf_get_sqrt_cov
+    srukf_get_predicted_state
+    srukf_get_predicted_measurement
+    srukf_get_innovation
+    srukf_get_kalman_gain
+    srukf_get_nx
+    srukf_get_nz
+    
+    ; Diagnostics
+    srukf_get_nis
+    srukf_get_student_weight
+    srukf_get_volatility
+    srukf_get_mahalanobis_sq
+    
+    ; Health monitoring
+    srukf_check_covariance
+    srukf_repair_covariance
+    srukf_check_state_bounds
+    srukf_enable_nis_tracking
+    srukf_get_nis_stats
+    srukf_nis_healthy
+    
+    ; Serialization
+    srukf_serialize_size
+    srukf_serialize
+    srukf_deserialize
+    
+    ; Version
+    srukf_version
