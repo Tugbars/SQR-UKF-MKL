@@ -73,7 +73,7 @@ option(BUILD_TESTS "Build test executables" ON)
 if(BUILD_TESTS)
     enable_testing()
     
-    # Unit tests
+    # Unit tests for UKF
     add_executable(test_srukf
         test/test_srukf.c
     )
@@ -85,6 +85,18 @@ if(BUILD_TESTS)
         target_link_libraries(test_srukf PRIVATE m)
     endif()
     add_test(NAME test_srukf COMMAND test_srukf)
+    
+    # Unit tests for Kelly
+    add_executable(test_kelly
+        test/test_kelly.c
+    )
+    target_link_libraries(test_kelly PRIVATE
+        student_t_srukf
+    )
+    if(UNIX)
+        target_link_libraries(test_kelly PRIVATE m)
+    endif()
+    add_test(NAME test_kelly COMMAND test_kelly)
     
     # Benchmark
     add_executable(bench_srukf
@@ -106,6 +118,6 @@ install(TARGETS student_t_srukf
     ARCHIVE DESTINATION lib
 )
 
-install(FILES MKL/student_t_srukf.h
+install(FILES MKL/student_t_srukf.h MKL/kelly.h
     DESTINATION include
 )
