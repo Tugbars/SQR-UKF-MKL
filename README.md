@@ -1,12 +1,19 @@
 # Square-Root UKF
 
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![MKL](https://img.shields.io/badge/Intel-MKL-0071C5.svg)](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html)
+
 MKL-accelerated Square-Root Unscented Kalman Filter with Student-t outlier rejection.
+
+<img width="1386" alt="UKF filtering SPY price data showing level tracking, velocity regime detection, volatility spike during crash, and NIS model health monitoring" src="https://github.com/user-attachments/assets/762e2920-98de-422e-b222-6dbb9adc4915" />
+
+<img width="1387" alt="Student-t vs Gaussian comparison and Kelly strategy backtest on SPY data" src="https://github.com/user-attachments/assets/6d41b921-26e7-45ea-a902-0e39bcbe8778" />
 
 ## Features
 
 - **Student-t likelihood** — Robust to measurement outliers (configurable ν)
 - **Square-root covariance** — Numerical stability via Cholesky factorization
-- **Fast** — 1.9 μs/step on Intel CPUs (530K updates/sec)
+- **Fast** — 1.7 μs/step on Intel CPUs (590K updates/sec)
 - **NIS health monitoring** — Windowed statistics for filter divergence detection
 - **Python bindings** — ctypes wrapper with NumPy integration
 - **Kelly criterion** — Position sizing module that integrates with UKF output
@@ -15,11 +22,13 @@ MKL-accelerated Square-Root Unscented Kalman Filter with Student-t outlier rejec
 
 | Implementation | Time/step | Steps/sec | vs FilterPy |
 |----------------|-----------|-----------|-------------|
-| C (MKL batch)  | 1.88 μs   | 530K      | 34× faster  |
-| Python ctypes  | 4.15 μs   | 240K      | 15× faster  |
+| C (MKL batch)  | 1.72 μs   | 590K      | 38× faster  |
+| Python ctypes  | 3.86 μs   | 260K      | 17× faster  |
 | FilterPy       | 64.6 μs   | 15K       | baseline    |
 
 *Benchmarked on Intel i9-14900K, nx=3, nz=1, Student-t ν=4*
+
+**Note:** "Batch" processes N measurements in a single Python→C call, eliminating per-call overhead (~2.1 μs). Use `srukf_step_batch()` for maximum throughput when processing historical data.
 
 ## Quick Start
 
@@ -61,23 +70,34 @@ srukf_destroy(ukf);
 ### Python
 
 ```python
+import numpy as np
 from srukf import StudentTSRUKF, Kelly, create_trend_filter
 
 # Quick start with pre-configured trend filter
 ukf = create_trend_filter(nu=4.0)
 
 # Run filter
-for z in measurements:
-    ukf.step([z])
+z = np.zeros(1)
+for measurement in measurements:
+    z[0] = measurement
+    ukf.step(z)
     print(f"State: {ukf.state}, NIS: {ukf.nis:.2f}")
 
 # Kelly position sizing
 kelly = Kelly.from_ukf(ukf, fraction=0.5)
 print(f"Position: {kelly.position:.3f}, Sharpe: {kelly.sharpe:.2f}")
 
-# Batch processing (faster)
+# Batch processing (faster - single Python→C call)
 states, covariances, nis_values = ukf.filter(measurements)
 ```
+
+### Demo Notebook
+
+See [`demo_ukf_finance.ipynb`](python/demo_ukf_finance.ipynb) for a complete example on real market data (SPY), including:
+- UKF state visualization (level, velocity, volatility)
+- Student-t vs Gaussian robustness comparison
+- Kelly criterion position sizing
+- Simple backtest
 
 ## Building
 
@@ -90,6 +110,8 @@ Download from [Intel oneAPI](https://www.intel.com/content/www/us/en/developer/t
 After installation, MKL is typically located at:
 - Windows: `C:\Program Files (x86)\Intel\oneAPI\mkl\<version>\`
 - Linux: `/opt/intel/oneapi/mkl/<version>/`
+
+**Python 3.8+** (required for `os.add_dll_directory()` on Windows)
 
 ### CMake Build
 
@@ -154,7 +176,8 @@ Square-Root-UKF/
 ├── python/
 │   ├── srukf.py               # Python bindings
 │   ├── compare_ukf.py         # FilterPy comparison
-│   └── bench_overhead.py      # Python overhead benchmark
+│   ├── bench_overhead.py      # Python overhead benchmark
+│   └── demo_ukf_finance.ipynb # Real data demo
 ├── test/
 │   ├── test_srukf.c           # UKF unit tests (11 tests)
 │   ├── test_kelly.c           # Kelly unit tests (14 tests)
@@ -276,6 +299,22 @@ weight = (ν + nz) / (ν + NIS)
 ```
 
 Large NIS (outlier) → small weight → measurement ignored.
+
+## Known Limitations
+
+- **Velocity lags reversals** — The trend estimate is backward-looking. V-shaped recoveries will be detected late. Consider adding regime change detection (e.g., BOCPD) for faster adaptation.
+
+- **Log-volatility is unobservable** — With H = [1, 0, 0], the filter cannot directly observe volatility. The log-vol state decays to its prior. Use realized volatility for risk estimates.
+
+- **Linear dynamics only** — This implementation uses linear F and H matrices. For nonlinear dynamics, the sigma point propagation would need modification.
+
+## References
+
+- Van der Merwe, R. (2004). *Sigma-Point Kalman Filters for Probabilistic Inference in Dynamic State-Space Models*. PhD thesis, Oregon Health & Science University.
+
+- Roth, M., Özkan, E., & Gustafsson, F. (2013). *A Student's t Filter for Heavy Tailed Process and Measurement Noise*. ICASSP.
+
+- Arasaratnam, I., & Haykin, S. (2009). *Cubature Kalman Filters*. IEEE Transactions on Automatic Control.
 
 ## License
 
